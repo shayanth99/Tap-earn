@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tapewap Telegram WebApp</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+    .section {
+      display: none;
+      padding: 20px;
+    }
+    .active {
+      display: block;
+    }
+    nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: #ffffff;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      box-shadow: 0 -1px 5px rgba(0,0,0,0.1);
+    }
+    nav button {
+      flex: 1;
+      height: 100%;
+      border: none;
+      background: none;
+      font-size: 16px;
+    }
+    #dog {
+      width: 200px;
+      cursor: pointer;
+      display: block;
+      margin: 30px auto;
+    }
+    .energy-bar {
+      width: 80%;
+      height: 20px;
+      background: #ccc;
+      border-radius: 10px;
+      margin: 0 auto 20px;
+      overflow: hidden;
+    }
+    .energy-fill {
+      height: 100%;
+      background: #4caf50;
+      width: 100%;
+      transition: width 0.3s;
+    }
+    .task {
+      margin-bottom: 20px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .task button {
+      margin-top: 10px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .withdraw-details {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sections -->
+<div id="profile" class="section active">
+  <h2>Profile</h2>
+  <p><strong>Name:</strong> <span id="username">User</span></p>
+  <p><strong>Joined:</strong> <span id="joinDate"></span></p>
+  <p><strong>Referral:</strong> <span id="referral">N/A</span></p>
+  <p><strong>Points:</strong> <span id="points">0</span></p>
+</div>
+
+<div id="tap" class="section">
+  <h2>Tap to Earn</h2>
+  <div class="energy-bar"><div class="energy-fill" id="energyBar"></div></div>
+  <img src="https://i.imgur.com/dyLwP2f.png" id="dog" alt="Tap Dog" />
+  <p style="text-align:center;">Tap the dog to earn points!</p>
+</div>
+
+<div id="task" class="section">
+  <h2>Tasks</h2>
+  <div id="taskList"></div>
+</div>
+
+<div id="withdraw" class="section">
+  <h2>Withdraw</h2>
+  <p>Points: <span id="withdrawPoints">0</span></p>
+  <div class="withdraw-details">
+    <label for="method">Payment Method:</label>
+    <select id="method">
+      <option value="paypal">PayPal</option>
+      <option value="wire">Wired Transfer</option>
+    </select>
+    <label for="details">Enter Account Details:</label>
+    <input type="text" id="details" placeholder="Enter PayPal email or bank details">
+    <label for="amount">Amount to Withdraw:</label>
+    <input type="number" id="amount" placeholder="Enter amount in points">
+    <button onclick="withdraw()">Withdraw</button>
+    <p id="withdrawMsg"></p>
+  </div>
+</div>
+
+<!-- Navigation -->
+<nav>
+  <button onclick="showSection('profile')">Profile</button>
+  <button onclick="showSection('tap')">Tap</button>
+  <button onclick="showSection('task')">Task</button>
+  <button onclick="showSection('withdraw')">Withdraw</button>
+</nav>
+
+<script>
+  // Local Storage DB Initialization
+  const db = {
+    username: "Telegram User",
+    joinDate: new Date().toLocaleDateString(),
+    referral: "ABC123",
+    points: 0,
+    energy: 100,
+    tasks: [false, false, false, false, false],
+  };
+
+  if (!localStorage.getItem('tapewap_user')) {
+    localStorage.setItem('tapewap_user', JSON.stringify(db));
+  }
+
+  function getUser() {
+    return JSON.parse(localStorage.getItem('tapewap_user'));
+  }
+
+  function setUser(data) {
+    localStorage.setItem('tapewap_user', JSON.stringify(data));
+  }
+
+  // Section toggle
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    updateUI();
+  }
+
+  // Update UI
+  function updateUI() {
+    const user = getUser();
+    document.getElementById('username').innerText = user.username;
+    document.getElementById('joinDate').innerText = user.joinDate;
+    document.getElementById('referral').innerText = user.referral;
+    document.getElementById('points').innerText = user.points;
+    document.getElementById('withdrawPoints').innerText = user.points;
+    document.getElementById('energyBar').style.width = `${user.energy}%`;
+
+    const taskList = document.getElementById('taskList');
+    taskList.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+      const done = user.tasks[i];
+      const div = document.createElement('div');
+      div.className = 'task';
+      div.innerHTML = `
+        <p>Watch this video to earn 1000 points</p>
+        <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">Watch Video ${i+1}</a><br>
+        <button ${done ? 'disabled' : ''} onclick="completeTask(${i})">${done ? 'Completed' : 'Complete Task'}</button>
+      `;
+      taskList.appendChild(div);
+    }
+  }
+
+  // Tap logic
+  document.getElementById('dog').addEventListener('click', () => {
+    const user = getUser();
+    if (user.energy >= 10) {
+      user.points += 100;
+      user.energy -= 10;
+      setUser(user);
+      updateUI();
+    } else {
+      alert('Not enough energy. Wait for recharge.');
+    }
+  });
+
+  // Energy Regeneration
+  setInterval(() => {
+    const user = getUser();
+    if (user.energy < 100) {
+      user.energy += 1;
+      setUser(user);
+      updateUI();
+    }
+  }, 5000); // Energy +1 every 5s
+
+  // Task Completion
+  function completeTask(index) {
+    const user = getUser();
+    if (!user.tasks[index]) {
+      user.tasks[index] = true;
+      user.points += 1000;
+      setUser(user);
+      updateUI();
+    }
+  }
+
+  // Withdraw
+  function withdraw() {
+    const user = getUser();
+    const method = document.getElementById('method').value;
+    const details = document.getElementById('details').value;
+    const amount = parseInt(document.getElementById('amount').value);
+
+    if (!details || isNaN(amount) || amount <= 0) {
+      document.getElementById('withdrawMsg').innerText = "Fill all fields correctly.";
+      return;
+    }
+
+    if (amount > user.points) {
+      document.getElementById('withdrawMsg').innerText = "Not enough points.";
+      return;
+    }
+
+    user.points -= amount;
+    setUser(user);
+    updateUI();
+    document.getElementById('withdrawMsg').innerText = `Withdrawal of ${amount} via ${method} requested!`;
+    document.getElementById('details').value = '';
+    document.getElementById('amount').value = '';
+  }
+
+  updateUI();
+</script>
+
+</body>
+</html>
